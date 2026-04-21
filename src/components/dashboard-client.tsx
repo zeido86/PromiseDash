@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 type HabitTemplateType = "STANDARD" | "GRAPH" | "BANK";
 type Habit = {
@@ -187,6 +188,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
   const doneToday = new Set(
     data.weekGrid.filter((row) => row.cells[dayIndex]?.done).map((row) => row.habitId),
   );
+  const weekRowByHabit = new Map(data.weekGrid.map((row) => [row.habitId, row]));
   const reportedToday = new Map<string, boolean | undefined>(
     data.weekGrid.map((row) => {
       const cell = row.cells[dayIndex];
@@ -857,8 +859,25 @@ export function DashboardClient({ data }: { data: DashboardData }) {
               const state = entryState[key] ?? { numericValue: "", checked: undefined };
               const isDone = doneToday.has(habit.id);
               const selectedBoolean = state.checked ?? reportedToday.get(habit.id);
+              const hasNumericDraft = state.numericValue.trim().length > 0;
+              const hasSavedChoiceToday = selectedBoolean !== undefined;
+              const weekRow = weekRowByHabit.get(habit.id);
+              const nextScheduledCompletion = weekRow?.cells
+                .slice(dayIndex + 1)
+                .map((cell, idx) => ({ cell, idx: idx + dayIndex + 1 }))
+                .find(({ cell }) => cell.scheduled && cell.done);
+              const preLoggedFuture =
+                habit.trackingType === "NUMERIC" && !isDone && Boolean(nextScheduledCompletion);
+              const cardToneClass =
+                selectedBoolean === false
+                  ? "border-rose-400/60 bg-rose-500/10"
+                  : selectedBoolean === true || preLoggedFuture || (habit.trackingType === "NUMERIC" && isDone)
+                    ? "border-emerald-400/60 bg-emerald-500/10"
+                    : weekRow?.frequencyType === "WEEKLY_TARGET"
+                      ? "border-amber-400/60 bg-amber-500/10"
+                      : "border";
               return (
-                <div key={habit.id} className="rounded-lg border p-3">
+                <div key={habit.id} className={cn("rounded-lg p-3 transition-colors", cardToneClass)}>
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <div>
                       <p className="font-medium">{habit.title}</p>
@@ -883,6 +902,11 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                       </p>
                       {getRegistrationHint(habit.id) ? (
                         <p className="text-xs text-muted-foreground">{getRegistrationHint(habit.id)}</p>
+                      ) : null}
+                      {preLoggedFuture && nextScheduledCompletion ? (
+                        <p className="text-xs text-emerald-300">
+                          Värdet uppdaterades idag och rapporteras på {weekRow?.cells[nextScheduledCompletion.idx]?.date}.
+                        </p>
                       ) : null}
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center">
@@ -957,13 +981,15 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                   {habit.trackingType === "NUMERIC" ? (
                     <div className="space-y-2">
                       <Input placeholder={habit.metricLabel ?? "Värde"} value={state.numericValue} onChange={(e) => setEntryState((p) => ({ ...p, [key]: { ...state, numericValue: e.target.value } }))} />
-                      <Button
-                        variant="outline"
-                        disabled={isSubmitting}
-                        onClick={() => saveEntry(habit, format(new Date(), "yyyy-MM-dd"), false)}
-                      >
-                        Inte utförd
-                      </Button>
+                      {hasNumericDraft || hasSavedChoiceToday ? (
+                        <Button
+                          variant="outline"
+                          disabled={isSubmitting}
+                          onClick={() => saveEntry(habit, format(new Date(), "yyyy-MM-dd"), false)}
+                        >
+                          Ta bort inmatning
+                        </Button>
+                      ) : null}
                     </div>
                   ) : (
                     <div className="mt-2 flex gap-2">
