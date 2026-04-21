@@ -1,0 +1,1 @@
+ALTER TYPE "HabitTemplateType" ADD VALUE 'COUNTDOWN';

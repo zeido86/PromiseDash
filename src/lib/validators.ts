@@ -27,7 +27,7 @@ export const updateHabitSchema = z
 export const createHabitSchema = z
   .object({
     title: z.string().min(2).max(120),
-    templateType: z.enum(["STANDARD", "GRAPH", "BANK"]).default("STANDARD"),
+    templateType: z.enum(["STANDARD", "GRAPH", "BANK", "COUNTDOWN"]).default("STANDARD"),
     description: z.string().max(400).optional(),
     category: z.string().min(2).max(80).optional(),
     trackingType: z.enum(["BOOLEAN", "NUMERIC"]),
@@ -85,6 +85,14 @@ export const createHabitSchema = z
       ctx.addIssue({
         code: "custom",
         message: "Slutdatum får inte vara före startdatum",
+        path: ["endDate"],
+      });
+    }
+
+    if (value.templateType === "COUNTDOWN" && !value.endDate) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Nedräkning kräver datum och tid att räkna ner till",
         path: ["endDate"],
       });
     }

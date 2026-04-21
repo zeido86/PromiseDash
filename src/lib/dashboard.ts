@@ -162,19 +162,22 @@ export async function getDashboardData(userId: string) {
       return acc;
     }, {});
 
+  const reportableHabits = habits.filter((habit) => habit.templateType !== "COUNTDOWN");
+  const countdownHabits = habits.filter((habit) => habit.templateType === "COUNTDOWN");
+
   const todayEntries = habitEntries.filter((entry) => isSameDay(entry.date, today));
   const completedToday = todayEntries.filter((entry) => {
-    const habit = habits.find((item) => item.id === entry.habitId);
+    const habit = reportableHabits.find((item) => item.id === entry.habitId);
     return habit ? isEntryCompleted(habit, entry) : false;
   }).length;
   const weekDone = habitEntries.filter((entry) => {
-    const habit = habits.find((item) => item.id === entry.habitId);
+    const habit = reportableHabits.find((item) => item.id === entry.habitId);
     return habit ? isEntryCompleted(habit, entry) : false;
   }).length;
-  const totalPossibleThisWeek = habits.length * 7;
+  const totalPossibleThisWeek = reportableHabits.length * 7;
   const weekProgress = totalPossibleThisWeek > 0 ? Math.round((weekDone / totalPossibleThisWeek) * 100) : 0;
 
-  const numericHabits = habits.filter((habit) => habit.trackingType === "NUMERIC");
+  const numericHabits = reportableHabits.filter((habit) => habit.trackingType === "NUMERIC");
   const habitCharts = numericHabits
     .map((habit) => {
       const basePoints = chartEntries
@@ -275,7 +278,7 @@ export async function getDashboardData(userId: string) {
     .filter((chart) => chart.points.length > 0);
 
   const days = Array.from({ length: 7 }).map((_, idx) => addDays(weekStart, idx));
-  const weekGrid = habits.map((habit) => {
+  const weekGrid = reportableHabits.map((habit) => {
     const habitWeekEntries = habitEntries.filter((entry) => entry.habitId === habit.id);
     const habitWeekDoneCount = habitWeekEntries.filter((entry) => isEntryCompleted(habit, entry)).length;
     const weeklyTargetReached =
@@ -328,7 +331,7 @@ export async function getDashboardData(userId: string) {
     };
   });
 
-  const pendingCards = habits.flatMap((habit) => {
+  const pendingCards = reportableHabits.flatMap((habit) => {
     const endDate = habit.endDate && habit.endDate < today ? habit.endDate : today;
     const intervalStart = habit.startDate <= endDate ? habit.startDate : endDate;
     const daysInRange = eachDayOfInterval({ start: intervalStart, end: endDate });
@@ -391,13 +394,18 @@ export async function getDashboardData(userId: string) {
     endDate: habit.endDate ? format(habit.endDate, "yyyy-MM-dd") : null,
     endDateLocked: Boolean(habit.challengeId),
   }));
+  const countdownCards = countdownHabits.map((habit) => ({
+    habitId: habit.id,
+    title: habit.title,
+    targetDate: habit.endDate ? format(habit.endDate, "yyyy-MM-dd'T'HH:mm") : null,
+  }));
 
   return {
     habits: habitsForClient,
     today,
     summary: {
       completedToday,
-      totalToday: habits.length,
+      totalToday: reportableHabits.length,
       weekDone,
       weekProgress,
       activeHabits: habits.length,
@@ -446,6 +454,7 @@ export async function getDashboardData(userId: string) {
       ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     },
     habitCharts,
+    countdownCards,
     pendingCards,
     weekGrid,
   };

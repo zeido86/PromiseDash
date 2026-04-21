@@ -246,6 +246,7 @@ enum HabitTemplateType {
   STANDARD
   GRAPH
   BANK
+  COUNTDOWN
 }
 
 enum ChallengeStatus {

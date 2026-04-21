@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { Check, X } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-type HabitTemplateType = "STANDARD" | "GRAPH" | "BANK";
+type HabitTemplateType = "STANDARD" | "GRAPH" | "BANK" | "COUNTDOWN";
 type Habit = {
   id: string;
   title: string;
@@ -90,6 +90,11 @@ type DashboardData = {
     aheadOfPace?: boolean | null;
     points: Array<{ date: string; isoDate?: string; value: number; pace?: number | null }>;
   }>;
+  countdownCards: Array<{
+    habitId: string;
+    title: string;
+    targetDate: string | null;
+  }>;
   pendingCards: Array<{
     habitId: string;
     title: string;
@@ -151,6 +156,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
     weekdays: [] as number[],
     startDate: "",
     endDate: "",
+    countdownTargetAt: "",
     startWeight: "",
     weighInWeekday: "5",
     milestonesEnabled: false,
@@ -175,12 +181,33 @@ export function DashboardClient({ data }: { data: DashboardData }) {
     targetValue: "",
     goalComparator: "GTE" as "GTE" | "LTE" | "EQ",
   });
+  const [countdownNow, setCountdownNow] = useState(new Date());
 
   function parseNumeric(value: string): number | undefined {
     if (!value.trim()) return undefined;
     const normalized = value.replace(",", ".");
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCountdownNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  function formatCountdown(targetDate: string | null) {
+    if (!targetDate) return "Saknar slutdatum";
+    const target = new Date(targetDate);
+    const diffMs = target.getTime() - countdownNow.getTime();
+    if (diffMs <= 0) return "Tiden är ute";
+
+    const totalSeconds = Math.floor(diffMs / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
   }
 
   const dayIndex = (new Date().getDay() + 6) % 7;
@@ -214,6 +241,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
       weekdays: [],
       startDate: "",
       endDate: "",
+      countdownTargetAt: "",
       startWeight: "",
       weighInWeekday: "5",
       milestonesEnabled: false,
@@ -332,27 +360,66 @@ export function DashboardClient({ data }: { data: DashboardData }) {
       await postJson("/api/habits", {
         title: habitForm.title,
         templateType: habitForm.templateType,
-        trackingType: habitForm.trackingType,
-        metricLabel: habitForm.trackingType === "NUMERIC" ? habitForm.metricLabel : undefined,
-        startValue: habitForm.trackingType === "NUMERIC" ? parseNumeric(habitForm.startValue) : undefined,
+        trackingType: habitForm.templateType === "COUNTDOWN" ? "BOOLEAN" : habitForm.trackingType,
+        metricLabel:
+          habitForm.templateType === "COUNTDOWN"
+            ? undefined
+            : habitForm.trackingType === "NUMERIC"
+              ? habitForm.metricLabel
+              : undefined,
+        startValue:
+          habitForm.templateType === "COUNTDOWN"
+            ? undefined
+            : habitForm.trackingType === "NUMERIC"
+              ? parseNumeric(habitForm.startValue)
+              : undefined,
         goalLabel:
-          habitForm.trackingType === "NUMERIC"
+          habitForm.templateType === "COUNTDOWN"
+            ? undefined
+            : habitForm.trackingType === "NUMERIC"
             ? habitForm.milestonesEnabled
               ? "Delmål"
               : "Mål"
             : undefined,
-        goalComparator: habitForm.trackingType === "NUMERIC" ? habitForm.goalComparator : undefined,
+        goalComparator:
+          habitForm.templateType === "COUNTDOWN"
+            ? undefined
+            : habitForm.trackingType === "NUMERIC"
+              ? habitForm.goalComparator
+              : undefined,
         targetValue:
-          habitForm.trackingType === "NUMERIC" ? parseNumeric(habitForm.targetValue) : undefined,
-        frequencyType: habitForm.frequencyType || "WEEKLY_TARGET",
-        scheduleMode: habitForm.frequencyType === "WEEKDAYS" ? "FIXED" : "FLEXIBLE",
+          habitForm.templateType === "COUNTDOWN"
+            ? undefined
+            : habitForm.trackingType === "NUMERIC"
+              ? parseNumeric(habitForm.targetValue)
+              : undefined,
+        frequencyType:
+          habitForm.templateType === "COUNTDOWN" ? "DAILY" : habitForm.frequencyType || "WEEKLY_TARGET",
+        scheduleMode:
+          habitForm.templateType === "COUNTDOWN"
+            ? "FLEXIBLE"
+            : habitForm.frequencyType === "WEEKDAYS"
+              ? "FIXED"
+              : "FLEXIBLE",
         weeklyTarget:
-          habitForm.frequencyType === "WEEKLY_TARGET" && habitForm.weeklyTarget
+          habitForm.templateType !== "COUNTDOWN" &&
+          habitForm.frequencyType === "WEEKLY_TARGET" &&
+          habitForm.weeklyTarget
             ? Number(habitForm.weeklyTarget)
             : undefined,
-        weekdays: habitForm.frequencyType === "WEEKDAYS" ? habitForm.weekdays : [],
+        weekdays:
+          habitForm.templateType !== "COUNTDOWN" && habitForm.frequencyType === "WEEKDAYS"
+            ? habitForm.weekdays
+            : [],
         startDate: new Date(`${habitForm.startDate || format(new Date(), "yyyy-MM-dd")}T12:00:00`).toISOString(),
-        endDate: habitForm.endDate ? new Date(`${habitForm.endDate}T12:00:00`).toISOString() : undefined,
+        endDate:
+          habitForm.templateType === "COUNTDOWN"
+            ? habitForm.countdownTargetAt
+              ? new Date(habitForm.countdownTargetAt).toISOString()
+              : undefined
+            : habitForm.endDate
+              ? new Date(`${habitForm.endDate}T12:00:00`).toISOString()
+              : undefined,
         setupWeightProfile:
           habitForm.templateType === "GRAPH" && habitForm.metricLabel.toLowerCase().includes("vikt") && habitForm.startWeight
             ? { startWeight: Number(habitForm.startWeight), weighInWeekday: Number(habitForm.weighInWeekday) }
@@ -361,7 +428,10 @@ export function DashboardClient({ data }: { data: DashboardData }) {
           habitForm.templateType === "BANK" && parseNumeric(habitForm.targetValue)
             ? { dailyTarget: Number(parseNumeric(habitForm.targetValue)) }
             : undefined,
-        milestonesEnabled: habitForm.milestonesEnabled && !!habitForm.endDate,
+        milestonesEnabled:
+          habitForm.templateType === "COUNTDOWN"
+            ? false
+            : habitForm.milestonesEnabled && !!habitForm.endDate,
       });
     }, "Löftet har skapats.");
   }
@@ -754,11 +824,12 @@ export function DashboardClient({ data }: { data: DashboardData }) {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <p className="text-sm font-semibold text-blue-100">Typ av löfte</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                   {[
                     { value: "STANDARD", label: "Standard" },
                     { value: "GRAPH", label: "Graf" },
                     { value: "BANK", label: "Bank" },
+                    { value: "COUNTDOWN", label: "Nedräkning" },
                   ].map((option) => (
                     <Button
                       key={option.value}
@@ -781,16 +852,30 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                 <p className="text-sm font-semibold text-blue-100">Namn</p>
               <Input placeholder="Ex: Spring 5 km" value={habitForm.title} onChange={(e) => setHabitForm((s) => ({ ...s, title: e.target.value }))} />
               </div>
-              <div className="space-y-1.5">
-                <p className="text-sm font-semibold text-blue-100">Tidsperiod</p>
-              <div className="grid gap-2 md:grid-cols-2">
-                <Input type="date" value={habitForm.startDate} onChange={(e) => setHabitForm((s) => ({ ...s, startDate: e.target.value }))} />
-                <Input type="date" value={habitForm.endDate} onChange={(e) => setHabitForm((s) => ({ ...s, endDate: e.target.value }))} />
-              </div>
-              <p className="text-xs text-muted-foreground">Lämna slutdatum tomt om löftet ska fortsätta tills vidare.</p>
-              </div>
-              <div className="space-y-1.5">
-                <p className="text-sm font-semibold text-blue-100">Registrering och frekvens</p>
+              {habitForm.templateType === "COUNTDOWN" ? (
+                <div className="space-y-1.5">
+                  <p className="text-sm font-semibold text-blue-100">Nedräkning till</p>
+                  <Input
+                    type="datetime-local"
+                    value={habitForm.countdownTargetAt}
+                    onChange={(e) => setHabitForm((s) => ({ ...s, countdownTargetAt: e.target.value }))}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Ange datum och tid som nedräkningen ska gå mot.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-semibold text-blue-100">Tidsperiod</p>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <Input type="date" value={habitForm.startDate} onChange={(e) => setHabitForm((s) => ({ ...s, startDate: e.target.value }))} />
+                    <Input type="date" value={habitForm.endDate} onChange={(e) => setHabitForm((s) => ({ ...s, endDate: e.target.value }))} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Lämna slutdatum tomt om löftet ska fortsätta tills vidare.</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-semibold text-blue-100">Registrering och frekvens</p>
               <div className="grid gap-2 md:grid-cols-2">
                 <Select value={habitForm.trackingType} onValueChange={(v) => setHabitForm((s) => ({ ...s, trackingType: v as "BOOLEAN" | "NUMERIC" }))}>
                   <SelectTrigger><SelectValue placeholder="Typ" /></SelectTrigger>
@@ -808,8 +893,10 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                   </SelectContent>
                 </Select>
               </div>
-              </div>
-              {habitForm.trackingType === "NUMERIC" ? (
+                  </div>
+                </>
+              )}
+              {habitForm.templateType !== "COUNTDOWN" && habitForm.trackingType === "NUMERIC" ? (
                 <div className="space-y-1.5">
                   <p className="text-sm font-semibold text-blue-100">Numeriska värden</p>
                   <div className="grid gap-2 md:grid-cols-2">
@@ -843,13 +930,13 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                   </div>
                 </div>
               ) : null}
-              {habitForm.frequencyType === "WEEKLY_TARGET" ? (
+              {habitForm.templateType !== "COUNTDOWN" && habitForm.frequencyType === "WEEKLY_TARGET" ? (
                 <div className="space-y-1.5">
                   <p className="text-sm font-semibold text-blue-100">Veckomål</p>
                   <Input placeholder="Antal gånger per vecka (ex: 3)" value={habitForm.weeklyTarget} onChange={(e) => setHabitForm((s) => ({ ...s, weeklyTarget: e.target.value }))} />
                 </div>
               ) : null}
-              {habitForm.frequencyType === "WEEKDAYS" ? (
+              {habitForm.templateType !== "COUNTDOWN" && habitForm.frequencyType === "WEEKDAYS" ? (
                 <div className="space-y-1.5">
                   <p className="text-sm font-semibold text-blue-100">Välj dagar</p>
                   <div className="flex flex-wrap gap-2">
@@ -881,7 +968,13 @@ export function DashboardClient({ data }: { data: DashboardData }) {
               ) : null}
               <Button
                 className="w-full md:w-auto"
-                disabled={isSubmitting || !habitForm.title || !habitForm.trackingType || !habitForm.frequencyType}
+                disabled={
+                  isSubmitting ||
+                  !habitForm.title ||
+                  (habitForm.templateType === "COUNTDOWN"
+                    ? !habitForm.countdownTargetAt
+                    : !habitForm.trackingType || !habitForm.frequencyType)
+                }
                 onClick={submitHabit}
               >
                 Skapa löfte
@@ -894,7 +987,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
         <Card>
           <CardHeader className="text-center"><CardTitle>Dagens registrering</CardTitle></CardHeader>
           <CardContent className="grid gap-3">
-            {data.habits.map((habit) => {
+            {data.habits.filter((habit) => habit.templateType !== "COUNTDOWN").map((habit) => {
               const key = `${habit.id}:${format(new Date(), "yyyy-MM-dd")}`;
               const state = entryState[key] ?? { numericValue: "", checked: undefined };
               const isDone = doneToday.has(habit.id);
@@ -1069,6 +1162,24 @@ export function DashboardClient({ data }: { data: DashboardData }) {
           </CardContent>
         </Card>
       </section>
+
+      {data.countdownCards.length > 0 ? (
+        <section className="grid gap-4 md:grid-cols-2">
+          {data.countdownCards.map((countdown) => (
+            <Card key={countdown.habitId}>
+              <CardHeader className="text-center">
+                <CardTitle>{countdown.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1 text-center">
+                <p className="text-3xl font-semibold">{formatCountdown(countdown.targetDate)}</p>
+                <p className="text-xs text-muted-foreground">
+                  Mål: {countdown.targetDate ? format(new Date(countdown.targetDate), "yyyy-MM-dd HH:mm") : "saknas"}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+      ) : null}
 
       {data.pendingCards.length > 0 ? (
         <section>
@@ -1286,7 +1397,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
         </Card>
       </section>
 
-      <section className="flex justify-end">
+      <section className="flex justify-center">
         <Button variant="outline" onClick={() => signOut({ callbackUrl: "/" })}>Logga ut</Button>
       </section>
     </div>
