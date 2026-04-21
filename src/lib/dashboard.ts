@@ -397,7 +397,7 @@ export async function getDashboardData(userId: string) {
   const countdownCards = countdownHabits.map((habit) => ({
     habitId: habit.id,
     title: habit.title,
-    targetDate: habit.endDate ? format(habit.endDate, "yyyy-MM-dd'T'HH:mm") : null,
+    targetDate: habit.endDate ? habit.endDate.toISOString() : null,
   }));
 
   return {

@@ -210,6 +210,90 @@ export function DashboardClient({ data }: { data: DashboardData }) {
     return `${days}d ${hours}h ${minutes}m ${seconds}s`;
   }
 
+  function getCountdownFact(targetDate: string | null, habitId: string) {
+    if (!targetDate) return null;
+    const remainingMinutes = Math.floor((new Date(targetDate).getTime() - countdownNow.getTime()) / 60000);
+    if (remainingMinutes <= 0) return "Tiden är ute - dags att fira eller starta nästa nedräkning.";
+
+    const minuteBucket = Math.floor(countdownNow.getTime() / 60000);
+    const habitHash = habitId.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+    const lotrMinutes = 558;
+    const references = [
+      { label: "Apollo 11 att nå månen", minutes: 8 * 24 * 60 + 3 * 60 + 18 },
+      { label: "att cykla Vätternrundan i lugnt tempo", minutes: 14 * 60 },
+      { label: "en bestigning av Mount Everest", minutes: 7 * 24 * 60 },
+      { label: "ett maraton för motionärer", minutes: 300 },
+      { label: "en tågresa Stockholm-Malmö", minutes: 270 },
+      { label: "en flygning Stockholm-London", minutes: 160 },
+      { label: "att koka en riktigt långkokt gryta", minutes: 240 },
+      { label: "en heldag på nöjespark", minutes: 10 * 60 },
+      { label: "en standardarbetsvecka", minutes: 40 * 60 },
+      { label: "att läsa en normal roman", minutes: 9 * 60 },
+      { label: "att se hela Hobbit-trilogin", minutes: 474 },
+      { label: "en weekendresa dörr till dörr", minutes: 2 * 24 * 60 },
+      { label: "att bygga ett större LEGO-set", minutes: 12 * 60 },
+      { label: "ett LAN-party över natten", minutes: 16 * 60 },
+      { label: "en dagsvandring i fjällen", minutes: 8 * 60 },
+      { label: "att baka surdegsbröd från start till mål", minutes: 10 * 60 },
+      { label: "att klara ett långt rollspelsmöte", minutes: 5 * 60 },
+      { label: "en biokväll med två filmer", minutes: 5 * 60 + 30 },
+      { label: "att köra Göteborg till Kiruna utan längre stopp", minutes: 18 * 60 },
+      { label: "en intensiv hackathon-helg", minutes: 48 * 60 },
+      { label: "att springa ett ultralopp", minutes: 13 * 60 },
+      { label: "en dags skidåkning", minutes: 7 * 60 },
+      { label: "att titta på en hel säsong av en serie", minutes: 9 * 60 },
+      { label: "att lära grunderna i ett nytt språk", minutes: 20 * 60 },
+      { label: "en klassisk roadtrip-dag", minutes: 11 * 60 },
+      { label: "att städa hela hemmet ordentligt", minutes: 6 * 60 },
+      { label: "att meal-preppa för en hel vecka", minutes: 4 * 60 + 30 },
+      { label: "en lång flygresa över Atlanten", minutes: 8 * 60 + 30 },
+      { label: "att lyssna igenom en ljudbok", minutes: 10 * 60 },
+      { label: "att måla om ett rum", minutes: 7 * 60 },
+      { label: "en lång helg med brädspel", minutes: 3 * 24 * 60 },
+      { label: "att ta sig igenom en heldagskonferens", minutes: 9 * 60 },
+      { label: "att köa till en stor konsert", minutes: 5 * 60 },
+      { label: "en full dag i skidbacken", minutes: 8 * 60 },
+      { label: "att gå hela Kungsleden etappvis-planerat", minutes: 6 * 24 * 60 },
+      { label: "att genomföra en mindre renovering", minutes: 4 * 24 * 60 },
+      { label: "att lära sig en ny låt på gitarr", minutes: 180 },
+      { label: "att se om en lång tv-seriehelg", minutes: 20 * 60 },
+      { label: "att förbereda ett större event", minutes: 15 * 60 },
+      { label: "en klassisk festivalhelg", minutes: 3 * 24 * 60 },
+      { label: "att skriva en längre uppsats", minutes: 12 * 60 },
+      { label: "att lösa ett stort pussel", minutes: 9 * 60 },
+      { label: "att köra igenom Sverige från söder till norr", minutes: 20 * 60 },
+      { label: "att göra en ordentlig vårstädning", minutes: 8 * 60 },
+      { label: "att packa och flytta en mindre lägenhet", minutes: 14 * 60 },
+      { label: "att planera ett bröllop i snabbversion", minutes: 30 * 60 },
+      { label: "att läsa en hel kursbok", minutes: 11 * 60 },
+      { label: "att spela en stor kampanj i co-op", minutes: 25 * 60 },
+      { label: "en lång dag av sightseeing i storstad", minutes: 9 * 60 },
+      { label: "att förbereda julfirande från grunden", minutes: 16 * 60 },
+    ];
+
+    const nearestReference = references.sort(
+      (a, b) => Math.abs(a.minutes - remainingMinutes) - Math.abs(b.minutes - remainingMinutes),
+    )[0];
+
+    const days = Math.floor(remainingMinutes / 1440);
+    const hours = Math.floor((remainingMinutes % 1440) / 60);
+    const mins = remainingMinutes % 60;
+    const lotrTimes = Math.max(1, Math.round(remainingMinutes / lotrMinutes));
+
+    const referenceVariants = references.map((reference) => `Ungefär samma tid som ${reference.label}.`);
+    const dynamicVariants = [
+      `Lika lång tid som att se Sagan om ringen-trilogin ungefär ${lotrTimes} gång(er).`,
+      `Närmast i jämförelse: ${nearestReference.label}.`,
+      `Cirka ${days} dagar, ${hours} timmar och ${mins} minuter kvar.`,
+      `Om du tar en 10-minuterspaus varje gång hinner du med ungefär ${Math.max(1, Math.floor(remainingMinutes / 10))} pauser innan mål.`,
+      `Det här motsvarar ungefär ${Math.max(1, Math.floor(remainingMinutes / 90))} långfilmer.`,
+      `Tid nog för cirka ${Math.max(1, Math.floor(remainingMinutes / 45))} promenader på 45 minuter.`,
+    ];
+    const variants = [...referenceVariants, ...dynamicVariants];
+
+    return variants[(minuteBucket + habitHash) % variants.length];
+  }
+
   const dayIndex = (new Date().getDay() + 6) % 7;
   const doneToday = new Set(
     data.weekGrid.filter((row) => row.cells[dayIndex]?.done).map((row) => row.habitId),
@@ -861,7 +945,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                     onChange={(e) => setHabitForm((s) => ({ ...s, countdownTargetAt: e.target.value }))}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Ange datum och tid som nedräkningen ska gå mot.
+                    Ange datum och tid i 24h-format (ex: 16:00) som nedräkningen ska gå mot.
                   </p>
                 </div>
               ) : (
@@ -1174,6 +1258,9 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                 <p className="text-3xl font-semibold">{formatCountdown(countdown.targetDate)}</p>
                 <p className="text-xs text-muted-foreground">
                   Mål: {countdown.targetDate ? format(new Date(countdown.targetDate), "yyyy-MM-dd HH:mm") : "saknas"}
+                </p>
+                <p className="text-xs text-blue-100/80">
+                  {getCountdownFact(countdown.targetDate, countdown.habitId)}
                 </p>
               </CardContent>
             </Card>
