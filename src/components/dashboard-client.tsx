@@ -879,6 +879,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                 .slice(dayIndex + 1)
                 .map((cell, idx) => ({ cell, idx: idx + dayIndex + 1 }))
                 .find(({ cell }) => cell.scheduled && cell.done);
+              const nextScheduledValue = nextScheduledCompletion?.cell.value;
               const preLoggedFuture =
                 habit.trackingType === "NUMERIC" && !isDone && Boolean(nextScheduledCompletion);
               const cardToneClass =
@@ -918,7 +919,9 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                       ) : null}
                       {preLoggedFuture && nextScheduledCompletion ? (
                         <p className="text-xs text-emerald-300">
-                          Värdet uppdaterades idag och rapporteras på {weekdayNamesFull[(nextScheduledCompletion.idx + 1) % 7]}.
+                          Värdet uppdaterades
+                          {nextScheduledValue != null ? ` till ${nextScheduledValue}` : ""}
+                          {" "}idag och rapporteras på {weekdayNamesFull[(nextScheduledCompletion.idx + 1) % 7]}.
                         </p>
                       ) : null}
                     </div>
@@ -1109,8 +1112,8 @@ export function DashboardClient({ data }: { data: DashboardData }) {
               className="cursor-pointer transition-colors hover:bg-card/80"
               onClick={() => replayChart(chart.habitId)}
             >
-              <CardHeader>
-                <CardTitle>{chart.title}</CardTitle>
+              <CardHeader className="text-center">
+                <CardTitle className="text-center">{chart.title}</CardTitle>
                 <p className="text-xs text-muted-foreground">
                   {chart.metricLabel}
                   {chart.targetValue != null ? ` · Mål: ${chart.targetValue}` : ""}
@@ -1243,7 +1246,12 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                   <TableRow key={row.habitId}>
                     <TableCell>
                       <div className="space-y-1">
-                        <p>{row.title}</p>
+                        <p>
+                          {row.title}
+                          {row.frequencyType === "WEEKLY_TARGET"
+                            ? ` (${Math.max((row.weeklyTarget ?? 0) - row.cells.filter((cell) => cell.done).length, 0)} kvar)`
+                            : ""}
+                        </p>
                         {row.challengeId ? (
                           <p className="text-xs text-amber-500">{row.challengeLabel ?? "Utmaningslöfte"}</p>
                         ) : null}
