@@ -1,6 +1,6 @@
 "use client";
 
-import { format, parseISO, subMonths, subYears } from "date-fns";
+import { format } from "date-fns";
 import { Check, X } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -128,7 +128,6 @@ const weekdayOptions = [
 const weekdayNamesFull = ["söndag", "måndag", "tisdag", "onsdag", "torsdag", "fredag", "lördag"];
 
 type EntryState = Record<string, { numericValue: string; checked?: boolean }>;
-type ChartRange = "since_start" | "year" | "half_year" | "three_months";
 
 export function DashboardClient({ data }: { data: DashboardData }) {
   const router = useRouter();
@@ -157,7 +156,6 @@ export function DashboardClient({ data }: { data: DashboardData }) {
     milestonesEnabled: false,
   });
   const [entryState, setEntryState] = useState<EntryState>({});
-  const [chartRange, setChartRange] = useState<Record<string, ChartRange>>({});
   const [chartReplayKey, setChartReplayKey] = useState<Record<string, number>>({});
   const [challengeQuery, setChallengeQuery] = useState("");
   const [challengeHabitTitle, setChallengeHabitTitle] = useState("Daglig utmaning");
@@ -502,16 +500,6 @@ export function DashboardClient({ data }: { data: DashboardData }) {
     return ">=";
   }
 
-  function filterChartPoints(points: Array<{ date: string; isoDate?: string; value: number; pace?: number | null }>, range: ChartRange) {
-    if (range === "since_start") return points;
-
-    const today = new Date();
-    const threshold =
-      range === "year" ? subYears(today, 1) : range === "half_year" ? subMonths(today, 6) : subMonths(today, 3);
-
-    return points.filter((point) => (point.isoDate ? parseISO(point.isoDate) >= threshold : true));
-  }
-
   function replayChart(habitId: string) {
     setChartReplayKey((prev) => ({
       ...prev,
@@ -556,25 +544,21 @@ export function DashboardClient({ data }: { data: DashboardData }) {
     <div
       className="grid gap-6 [&_[data-slot=card]]:border [&_[data-slot=card]]:border-[#2da2ff33] [&_[data-slot=card]]:bg-[#0a1022]/95 [&_[data-slot=card]]:text-blue-50 [&_[data-slot=card-title]]:text-blue-50 [&_.text-muted-foreground]:text-blue-100/70 [&_[data-slot=button][data-variant=outline]]:border-[#2da2ff55] [&_[data-slot=button][data-variant=outline]]:bg-[#0f1832] [&_[data-slot=button][data-variant=outline]]:text-blue-50 [&_[data-slot=input]]:border-[#2da2ff55] [&_[data-slot=input]]:bg-[#0f1832] [&_[data-slot=input]]:text-blue-50 [&_[data-slot=input]]:placeholder:text-blue-200/40"
     >
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardHeader><CardTitle>Dagens löften</CardTitle></CardHeader>
-          <CardContent className="text-3xl font-semibold">{data.summary.completedToday}/{data.summary.totalToday}</CardContent>
+          <CardHeader className="text-center"><CardTitle>Dagens löften</CardTitle></CardHeader>
+          <CardContent className="text-center text-3xl font-semibold">{data.summary.completedToday}/{data.summary.totalToday}</CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Veckoprogress</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
+          <CardHeader className="text-center"><CardTitle>Veckoprogress</CardTitle></CardHeader>
+          <CardContent className="space-y-2 text-center">
             <p className="text-3xl font-semibold">{data.summary.weekProgress}%</p>
             <Progress value={data.summary.weekProgress} />
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Aktiva löften</CardTitle></CardHeader>
-          <CardContent className="text-3xl font-semibold">{data.summary.activeHabits}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Status</CardTitle></CardHeader>
-          <CardContent className="text-sm text-muted-foreground">Du ligger på {data.summary.weekDone} registreringar den här veckan.</CardContent>
+          <CardHeader className="text-center"><CardTitle>Aktiva löften</CardTitle></CardHeader>
+          <CardContent className="text-center text-3xl font-semibold">{data.summary.activeHabits}</CardContent>
         </Card>
       </section>
 
@@ -774,22 +758,48 @@ export function DashboardClient({ data }: { data: DashboardData }) {
         {showCreateHabit ? (
           <Card>
             <CardHeader>
-              <CardTitle>Skapa nytt löfte</CardTitle>
+              <CardTitle className="text-center">Skapa nytt löfte</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Select value={habitForm.templateType} onValueChange={(v) => applyTemplate(v as HabitTemplateType)}>
-                <SelectTrigger><SelectValue placeholder="Välj löftestyp" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="STANDARD">Standard</SelectItem>
-                  <SelectItem value="GRAPH">Graf</SelectItem>
-                  <SelectItem value="BANK">Bank</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input placeholder="Titel på löftet" value={habitForm.title} onChange={(e) => setHabitForm((s) => ({ ...s, title: e.target.value }))} />
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-blue-100">Typ av löfte</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: "STANDARD", label: "Standard" },
+                    { value: "GRAPH", label: "Graf" },
+                    { value: "BANK", label: "Bank" },
+                  ].map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      className={cn(
+                        "transition-all",
+                        habitForm.templateType === option.value
+                          ? "border-blue-300 bg-blue-500 text-white hover:bg-blue-500/90"
+                          : "border-[#2da2ff66] bg-[#0f1832] text-blue-100 hover:bg-[#16264d]",
+                      )}
+                      variant="outline"
+                      onClick={() => applyTemplate(option.value as HabitTemplateType)}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold text-blue-100">Namn</p>
+              <Input placeholder="Ex: Spring 5 km" value={habitForm.title} onChange={(e) => setHabitForm((s) => ({ ...s, title: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold text-blue-100">Tidsperiod</p>
               <div className="grid gap-2 md:grid-cols-2">
                 <Input type="date" value={habitForm.startDate} onChange={(e) => setHabitForm((s) => ({ ...s, startDate: e.target.value }))} />
                 <Input type="date" value={habitForm.endDate} onChange={(e) => setHabitForm((s) => ({ ...s, endDate: e.target.value }))} />
               </div>
+              <p className="text-xs text-muted-foreground">Lämna slutdatum tomt om löftet ska fortsätta tills vidare.</p>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold text-blue-100">Registrering och frekvens</p>
               <div className="grid gap-2 md:grid-cols-2">
                 <Select value={habitForm.trackingType} onValueChange={(v) => setHabitForm((s) => ({ ...s, trackingType: v as "BOOLEAN" | "NUMERIC" }))}>
                   <SelectTrigger><SelectValue placeholder="Välj registreringssätt" /></SelectTrigger>
@@ -807,37 +817,46 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                   </SelectContent>
                 </Select>
               </div>
+              </div>
               {habitForm.trackingType === "NUMERIC" ? (
-                <div className="grid gap-2 md:grid-cols-2">
-                  <Input placeholder="Namn på värde (ex. Distans)" value={habitForm.metricLabel} onChange={(e) => setHabitForm((s) => ({ ...s, metricLabel: e.target.value }))} />
-                  <Input placeholder="Startvärde (valfritt)" value={habitForm.startValue} onChange={(e) => setHabitForm((s) => ({ ...s, startValue: e.target.value }))} />
-                  <Input placeholder="Målvärde" value={habitForm.targetValue} onChange={(e) => setHabitForm((s) => ({ ...s, targetValue: e.target.value }))} />
-                  <Select value={habitForm.goalComparator} onValueChange={(v) => setHabitForm((s) => ({ ...s, goalComparator: v as "GTE" | "LTE" | "EQ" }))}>
-                  <SelectTrigger><SelectValue placeholder="Välj målregel" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="GTE">Lika med eller högre</SelectItem>
-                      <SelectItem value="LTE">Lika med eller lägre</SelectItem>
-                      <SelectItem value="EQ">Exakt lika</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={habitForm.milestonesEnabled ? "JA" : "NEJ"}
-                    onValueChange={(v) => setHabitForm((s) => ({ ...s, milestonesEnabled: v === "JA" }))}
-                    disabled={!habitForm.endDate}
-                  >
-                  <SelectTrigger><SelectValue placeholder="Använd delmål?" /></SelectTrigger>
-                    <SelectContent>
-                    <SelectItem value="NEJ">Nej</SelectItem>
-                    <SelectItem value="JA">Ja</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-1.5">
+                  <p className="text-sm font-semibold text-blue-100">Numeriska värden</p>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <Input placeholder="Namn på värde (ex. Distans)" value={habitForm.metricLabel} onChange={(e) => setHabitForm((s) => ({ ...s, metricLabel: e.target.value }))} />
+                    <Input placeholder="Startvärde (valfritt)" value={habitForm.startValue} onChange={(e) => setHabitForm((s) => ({ ...s, startValue: e.target.value }))} />
+                    <Input placeholder="Målvärde" value={habitForm.targetValue} onChange={(e) => setHabitForm((s) => ({ ...s, targetValue: e.target.value }))} />
+                    <Select value={habitForm.goalComparator} onValueChange={(v) => setHabitForm((s) => ({ ...s, goalComparator: v as "GTE" | "LTE" | "EQ" }))}>
+                    <SelectTrigger><SelectValue placeholder="Välj målregel" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="GTE">Lika med eller högre</SelectItem>
+                        <SelectItem value="LTE">Lika med eller lägre</SelectItem>
+                        <SelectItem value="EQ">Exakt lika</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={habitForm.milestonesEnabled ? "JA" : "NEJ"}
+                      onValueChange={(v) => setHabitForm((s) => ({ ...s, milestonesEnabled: v === "JA" }))}
+                      disabled={!habitForm.endDate}
+                    >
+                    <SelectTrigger><SelectValue placeholder="Använd delmål?" /></SelectTrigger>
+                      <SelectContent>
+                      <SelectItem value="NEJ">Nej</SelectItem>
+                      <SelectItem value="JA">Ja</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               ) : null}
               {habitForm.frequencyType === "WEEKLY_TARGET" ? (
-                <Input placeholder="Antal gånger per vecka" value={habitForm.weeklyTarget} onChange={(e) => setHabitForm((s) => ({ ...s, weeklyTarget: e.target.value }))} />
+                <div className="space-y-1.5">
+                  <p className="text-sm font-semibold text-blue-100">Veckomål</p>
+                  <Input placeholder="Antal gånger per vecka (ex: 3)" value={habitForm.weeklyTarget} onChange={(e) => setHabitForm((s) => ({ ...s, weeklyTarget: e.target.value }))} />
+                </div>
               ) : null}
               {habitForm.frequencyType === "WEEKDAYS" ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="space-y-1.5">
+                  <p className="text-sm font-semibold text-blue-100">Välj dagar</p>
+                  <div className="flex flex-wrap gap-2">
                   {weekdayOptions.map((weekday) => {
                     const active = habitForm.weekdays.includes(weekday.value);
                     return (
@@ -845,6 +864,11 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                         key={weekday.value}
                         variant={active ? "default" : "outline"}
                         size="sm"
+                        className={cn(
+                          active
+                            ? "border-blue-300 bg-blue-500 text-white hover:bg-blue-500/90"
+                            : "border-[#2da2ff66] bg-[#0f1832] text-blue-100 hover:bg-[#16264d]",
+                        )}
                         onClick={() =>
                           setHabitForm((s) => ({
                             ...s,
@@ -857,15 +881,16 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                     );
                   })}
                 </div>
+                </div>
               ) : null}
-              <Button disabled={isSubmitting || !habitForm.title} onClick={submitHabit}>Skapa löfte</Button>
+              <Button className="w-full md:w-auto" disabled={isSubmitting || !habitForm.title} onClick={submitHabit}>Skapa löfte</Button>
               {feedback ? <p className="text-sm text-muted-foreground">{feedback}</p> : null}
             </CardContent>
           </Card>
         ) : null}
 
         <Card>
-          <CardHeader><CardTitle>Dagens registrering (kort)</CardTitle></CardHeader>
+          <CardHeader className="text-center"><CardTitle>Dagens registrering</CardTitle></CardHeader>
           <CardContent className="grid gap-3">
             {data.habits.map((habit) => {
               const key = `${habit.id}:${format(new Date(), "yyyy-MM-dd")}`;
@@ -1134,31 +1159,12 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                     </span>
                   </p>
                 ) : null}
-                <Select
-                  value={chartRange[chart.habitId] ?? "since_start"}
-                  onValueChange={(value) =>
-                    setChartRange((prev) => ({
-                      ...prev,
-                      [chart.habitId]: value as ChartRange,
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Tidsperiod" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="since_start">Sedan start</SelectItem>
-                    <SelectItem value="year">Senaste året</SelectItem>
-                    <SelectItem value="half_year">Senaste halvåret</SelectItem>
-                    <SelectItem value="three_months">Senaste 3 månaderna</SelectItem>
-                  </SelectContent>
-                </Select>
               </CardHeader>
               <CardContent className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     key={`${chart.habitId}-${chartReplayKey[chart.habitId] ?? 0}`}
-                    data={filterChartPoints(chart.points, chartRange[chart.habitId] ?? "since_start")}
+                    data={chart.points}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
@@ -1224,7 +1230,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
       <section className="grid gap-6">
         <Card>
           <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Veckoöversikt</CardTitle>
+            <CardTitle className="w-full text-center">Veckoöversikt</CardTitle>
             <Badge variant="secondary">{format(new Date(), "yyyy-MM-dd")}</Badge>
           </CardHeader>
           <CardContent>
