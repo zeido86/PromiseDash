@@ -563,15 +563,9 @@ export function DashboardClient({ data }: { data: DashboardData }) {
         </Card>
       </section>
 
-      <section className="flex justify-end">
+      <section className="flex justify-center">
         <Button variant="outline" onClick={() => setShowCreateHabit((prev) => !prev)}>
           {showCreateHabit ? "Dölj skapa löfte" : "Nytt löfte"}
-        </Button>
-      </section>
-
-      <section className="flex justify-end">
-        <Button variant="outline" onClick={() => setShowChallengeCard((prev) => !prev)}>
-          {showChallengeCard ? "Dölj utmaningar" : "Ny utmaning"}
         </Button>
       </section>
 
