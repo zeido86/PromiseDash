@@ -130,6 +130,8 @@ const weekdayOptions = [
   { label: "Lör", value: 6 },
   { label: "Sön", value: 0 },
 ];
+const hourOptions = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0"));
+const minuteOptions = Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, "0"));
 const weekdayNamesFull = ["söndag", "måndag", "tisdag", "onsdag", "torsdag", "fredag", "lördag"];
 
 type EntryState = Record<string, { numericValue: string; checked?: boolean }>;
@@ -945,13 +947,40 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                       value={habitForm.countdownTargetDate}
                       onChange={(e) => setHabitForm((s) => ({ ...s, countdownTargetDate: e.target.value }))}
                     />
-                    <Input
-                      type="time"
-                      step={60}
-                      lang="sv-SE"
-                      value={habitForm.countdownTargetTime}
-                      onChange={(e) => setHabitForm((s) => ({ ...s, countdownTargetTime: e.target.value }))}
-                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Select
+                        value={habitForm.countdownTargetTime.split(":")[0] ?? ""}
+                        onValueChange={(hour) =>
+                          setHabitForm((s) => {
+                            const currentMinute = s.countdownTargetTime.split(":")[1] ?? "00";
+                            return { ...s, countdownTargetTime: `${hour}:${currentMinute}` };
+                          })
+                        }
+                      >
+                        <SelectTrigger><SelectValue placeholder="Timme" /></SelectTrigger>
+                        <SelectContent>
+                          {hourOptions.map((hour) => (
+                            <SelectItem key={hour} value={hour}>{hour}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={habitForm.countdownTargetTime.split(":")[1] ?? ""}
+                        onValueChange={(minute) =>
+                          setHabitForm((s) => {
+                            const currentHour = s.countdownTargetTime.split(":")[0] ?? "00";
+                            return { ...s, countdownTargetTime: `${currentHour}:${minute}` };
+                          })
+                        }
+                      >
+                        <SelectTrigger><SelectValue placeholder="Minut" /></SelectTrigger>
+                        <SelectContent>
+                          {minuteOptions.map((minute) => (
+                            <SelectItem key={minute} value={minute}>{minute}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Ange datum och tid i 24h-format (ex: 16:00) som nedräkningen ska gå mot.
@@ -1104,10 +1133,10 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                       ? "border-amber-400/60 bg-amber-500/10"
                       : "border";
               return (
-                <div key={habit.id} className={cn("rounded-lg p-3 transition-colors", cardToneClass)}>
-                  <div className="mb-2 flex items-start justify-between gap-2">
+                <div key={habit.id} className={cn("rounded-lg p-3 sm:p-4 transition-colors", cardToneClass)}>
+                  <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <p className="font-medium">{habit.title}</p>
+                      <p className="text-base font-medium">{habit.title}</p>
                       {habit.challengeId ? (
                         <p className="text-xs text-amber-500">{habit.challengeLabel ?? "Utmaningslöfte"}</p>
                       ) : null}
@@ -1138,11 +1167,11 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                         </p>
                       ) : null}
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center">
-                      <Button variant="outline" size="sm" disabled={isSubmitting} onClick={() => openHabitSettings(habit)}>
+                    <div className="grid w-full shrink-0 grid-cols-1 gap-2 sm:w-auto sm:flex sm:flex-row sm:items-center">
+                      <Button className="w-full sm:w-auto" variant="outline" size="sm" disabled={isSubmitting} onClick={() => openHabitSettings(habit)}>
                         Justera mål / datum
                       </Button>
-                      <Button variant="outline" size="sm" disabled={isSubmitting} onClick={() => deleteHabit(habit.id, habit.title)}>Ta bort</Button>
+                      <Button className="w-full sm:w-auto" variant="outline" size="sm" disabled={isSubmitting} onClick={() => deleteHabit(habit.id, habit.title)}>Ta bort</Button>
                     </div>
                   </div>
                   {habitSettingsOpenId === habit.id ? (
@@ -1212,6 +1241,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                       <Input placeholder={habit.metricLabel ?? "Värde"} value={state.numericValue} onChange={(e) => setEntryState((p) => ({ ...p, [key]: { ...state, numericValue: e.target.value } }))} />
                       {hasNumericDraft || hasSavedNumericValueToday ? (
                         <Button
+                          className="w-full sm:w-auto"
                           variant="outline"
                           disabled={isSubmitting}
                           onClick={() => clearNumericEntry(habit, key, Boolean(hasSavedNumericValueToday))}
@@ -1221,8 +1251,9 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                       ) : null}
                     </div>
                   ) : (
-                    <div className="mt-2 flex gap-2">
+                    <div className="mt-2 grid grid-cols-2 gap-2 sm:flex">
                       <Button
+                        className="w-full sm:w-auto"
                         variant={selectedBoolean === true ? "default" : "outline"}
                         disabled={isSubmitting}
                         onClick={() => {
@@ -1233,6 +1264,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                         Ja
                       </Button>
                       <Button
+                        className="w-full sm:w-auto"
                         variant={selectedBoolean === false ? "destructive" : "outline"}
                         disabled={isSubmitting}
                         onClick={() => {
@@ -1245,7 +1277,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                     </div>
                   )}
                   {habit.trackingType === "NUMERIC" ? (
-                    <Button className="mt-2" variant={isDone ? "default" : "outline"} disabled={isSubmitting} onClick={() => saveEntry(habit)}>
+                    <Button className="mt-2 w-full sm:w-auto" variant={isDone ? "default" : "outline"} disabled={isSubmitting} onClick={() => saveEntry(habit)}>
                       {isDone ? "Ändra" : "Klarmarkera"}
                     </Button>
                   ) : null}
