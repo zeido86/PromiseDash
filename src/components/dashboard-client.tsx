@@ -139,17 +139,17 @@ export function DashboardClient({ data }: { data: DashboardData }) {
   const [habitForm, setHabitForm] = useState({
     templateType: "STANDARD" as HabitTemplateType,
     title: "",
-    trackingType: "NUMERIC" as "BOOLEAN" | "NUMERIC",
-    metricLabel: "Distans",
+    trackingType: "" as "" | "BOOLEAN" | "NUMERIC",
+    metricLabel: "",
     startValue: "",
-    goalLabel: "Måldistans",
+    goalLabel: "Målvärde",
     targetValue: "",
     goalComparator: "GTE" as "GTE" | "LTE" | "EQ",
-    frequencyType: "WEEKLY_TARGET" as "DAILY" | "WEEKDAYS" | "WEEKLY_TARGET",
-    weeklyTarget: "3",
+    frequencyType: "" as "" | "DAILY" | "WEEKDAYS" | "WEEKLY_TARGET",
+    weeklyTarget: "",
     scheduleMode: "FLEXIBLE" as "FIXED" | "FLEXIBLE",
     weekdays: [] as number[],
-    startDate: format(new Date(), "yyyy-MM-dd"),
+    startDate: "",
     endDate: "",
     startWeight: "",
     weighInWeekday: "5",
@@ -198,48 +198,30 @@ export function DashboardClient({ data }: { data: DashboardData }) {
     }),
   );
 
-  function applyTemplate(templateType: HabitTemplateType) {
-    if (templateType === "GRAPH") {
-      setHabitForm((s) => ({
-        ...s,
-        templateType,
-        title: "Ny graf",
-        trackingType: "NUMERIC",
-        metricLabel: "Värde",
-        startValue: "",
-        goalLabel: "Målvärde",
-      }));
-      return;
-    }
-    if (templateType === "BANK") {
-      setHabitForm((s) => ({
-        ...s,
-        templateType,
-        title: "Kaloribank",
-        trackingType: "NUMERIC",
-        metricLabel: "Kaloriintag",
-        startValue: "",
-        goalLabel: "Dagligt mål",
-        goalComparator: "LTE",
-        targetValue: "2200",
-        frequencyType: "DAILY",
-        weeklyTarget: "7",
-      }));
-      return;
-    }
-    setHabitForm((s) => ({
-      ...s,
+  function resetHabitForm(templateType: HabitTemplateType = "STANDARD") {
+    setHabitForm({
       templateType,
       title: "",
-      trackingType: "NUMERIC",
-      metricLabel: "Distans",
+      trackingType: "",
+      metricLabel: "",
       startValue: "",
-      goalLabel: "Måldistans",
-      goalComparator: "GTE",
+      goalLabel: "Målvärde",
       targetValue: "",
-      frequencyType: "WEEKLY_TARGET",
-      weeklyTarget: "3",
-    }));
+      goalComparator: "GTE",
+      frequencyType: "",
+      weeklyTarget: "",
+      scheduleMode: "FLEXIBLE",
+      weekdays: [],
+      startDate: "",
+      endDate: "",
+      startWeight: "",
+      weighInWeekday: "5",
+      milestonesEnabled: false,
+    });
+  }
+
+  function applyTemplate(templateType: HabitTemplateType) {
+    resetHabitForm(templateType);
   }
 
   async function run(action: () => Promise<void>, okMessage: string) {
@@ -362,14 +344,14 @@ export function DashboardClient({ data }: { data: DashboardData }) {
         goalComparator: habitForm.trackingType === "NUMERIC" ? habitForm.goalComparator : undefined,
         targetValue:
           habitForm.trackingType === "NUMERIC" ? parseNumeric(habitForm.targetValue) : undefined,
-        frequencyType: habitForm.frequencyType,
+        frequencyType: habitForm.frequencyType || "WEEKLY_TARGET",
         scheduleMode: habitForm.frequencyType === "WEEKDAYS" ? "FIXED" : "FLEXIBLE",
         weeklyTarget:
           habitForm.frequencyType === "WEEKLY_TARGET" && habitForm.weeklyTarget
             ? Number(habitForm.weeklyTarget)
             : undefined,
         weekdays: habitForm.frequencyType === "WEEKDAYS" ? habitForm.weekdays : [],
-        startDate: new Date(`${habitForm.startDate}T12:00:00`).toISOString(),
+        startDate: new Date(`${habitForm.startDate || format(new Date(), "yyyy-MM-dd")}T12:00:00`).toISOString(),
         endDate: habitForm.endDate ? new Date(`${habitForm.endDate}T12:00:00`).toISOString() : undefined,
         setupWeightProfile:
           habitForm.templateType === "GRAPH" && habitForm.metricLabel.toLowerCase().includes("vikt") && habitForm.startWeight
@@ -563,7 +545,16 @@ export function DashboardClient({ data }: { data: DashboardData }) {
       </section>
 
       <section className="flex justify-center">
-        <Button variant="outline" onClick={() => setShowCreateHabit((prev) => !prev)}>
+        <Button
+          variant="outline"
+          onClick={() =>
+            setShowCreateHabit((prev) => {
+              const next = !prev;
+              if (next) resetHabitForm("STANDARD");
+              return next;
+            })
+          }
+        >
           {showCreateHabit ? "Dölj skapa löfte" : "Nytt löfte"}
         </Button>
       </section>
@@ -802,14 +793,14 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                 <p className="text-sm font-semibold text-blue-100">Registrering och frekvens</p>
               <div className="grid gap-2 md:grid-cols-2">
                 <Select value={habitForm.trackingType} onValueChange={(v) => setHabitForm((s) => ({ ...s, trackingType: v as "BOOLEAN" | "NUMERIC" }))}>
-                  <SelectTrigger><SelectValue placeholder="Välj registreringssätt" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Typ" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="BOOLEAN">Ja/nej</SelectItem>
                     <SelectItem value="NUMERIC">Numeriskt värde</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={habitForm.frequencyType} onValueChange={(v) => setHabitForm((s) => ({ ...s, frequencyType: v as "DAILY" | "WEEKDAYS" | "WEEKLY_TARGET" }))}>
-                  <SelectTrigger><SelectValue placeholder="Välj frekvens" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Frekvens" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="DAILY">Dagligen</SelectItem>
                     <SelectItem value="WEEKLY_TARGET">X gånger per vecka</SelectItem>
@@ -833,17 +824,22 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                         <SelectItem value="EQ">Exakt lika</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Select
-                      value={habitForm.milestonesEnabled ? "JA" : "NEJ"}
-                      onValueChange={(v) => setHabitForm((s) => ({ ...s, milestonesEnabled: v === "JA" }))}
-                      disabled={!habitForm.endDate}
-                    >
-                    <SelectTrigger><SelectValue placeholder="Använd delmål?" /></SelectTrigger>
-                      <SelectContent>
-                      <SelectItem value="NEJ">Nej</SelectItem>
-                      <SelectItem value="JA">Ja</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">
+                        Dynamiska delmål kan bara aktiveras om du har valt ett slutdatum.
+                      </p>
+                      <Select
+                        value={habitForm.milestonesEnabled ? "JA" : "NEJ"}
+                        onValueChange={(v) => setHabitForm((s) => ({ ...s, milestonesEnabled: v === "JA" }))}
+                        disabled={!habitForm.endDate}
+                      >
+                      <SelectTrigger><SelectValue placeholder="Använd delmål?" /></SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="NEJ">Nej</SelectItem>
+                        <SelectItem value="JA">Ja</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -883,7 +879,13 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                 </div>
                 </div>
               ) : null}
-              <Button className="w-full md:w-auto" disabled={isSubmitting || !habitForm.title} onClick={submitHabit}>Skapa löfte</Button>
+              <Button
+                className="w-full md:w-auto"
+                disabled={isSubmitting || !habitForm.title || !habitForm.trackingType || !habitForm.frequencyType}
+                onClick={submitHabit}
+              >
+                Skapa löfte
+              </Button>
               {feedback ? <p className="text-sm text-muted-foreground">{feedback}</p> : null}
             </CardContent>
           </Card>
