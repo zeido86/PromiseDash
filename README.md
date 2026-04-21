@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PromisesDash
 
-## Getting Started
+Modern, responsiv dashboard for personliga loften, vanor och mal.
 
-First, run the development server:
+## Lokal setup (snabbstart)
+
+### 1) Krav
+
+- Node.js 20+
+- Docker Desktop
+
+### 2) Installera paket
+
+```bash
+npm install
+```
+
+### 3) Konfigurera miljo
+
+```bash
+copy .env.example .env
+```
+
+Om `copy` inte fungerar i din terminal, skapa `.env` manuellt med samma innehall som `.env.example`.
+
+### 4) Starta databas + migrering + seed
+
+```bash
+npm run setup:local
+```
+
+Detta gor:
+- startar PostgreSQL via Docker (`docker-compose.yml`)
+- kor Prisma migration
+- fyller databasen med demo-data
+
+### 5) Starta appen
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Oppna [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Demo-inloggning
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Användarnamn: `demo_user`
+- E-post: `demo@promisesdash.local`
+- Losenord: `Demo12345!`
 
-## Learn More
+## Nyttiga kommandon
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `npm run db:up` - starta databas
+- `npm run db:down` - stoppa databas
+- `npm run prisma:migrate` - skapa/uppdatera migration
+- `npm run prisma:seed` - fyll pa demo-data
+- `npm run prisma:studio` - oppna Prisma Studio
+- `npm run lint` - lint
+- `npm run build` - produktionstest
