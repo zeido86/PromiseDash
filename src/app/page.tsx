@@ -18,8 +18,8 @@ export default async function Home() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_#2da2ff55,_transparent_45%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_#5b2dff44,_transparent_45%)]" />
       <Card className="relative z-10 w-full max-w-md border-[#2da2ff33] bg-[#0a1022]/95 backdrop-blur-sm">
-        <CardHeader>
-          <Image src={logo} alt="PromisesDash logga" className="h-16 w-auto object-contain" priority />
+        <CardHeader className="items-center">
+          <Image src={logo} alt="PromisesDash logga" className="h-28 w-auto object-contain" priority />
         </CardHeader>
         <CardContent>
           <AuthForm />
