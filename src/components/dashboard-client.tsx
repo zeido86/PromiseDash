@@ -125,6 +125,7 @@ const weekdayOptions = [
   { label: "Lör", value: 6 },
   { label: "Sön", value: 0 },
 ];
+const weekdayNamesFull = ["söndag", "måndag", "tisdag", "onsdag", "torsdag", "fredag", "lördag"];
 
 type EntryState = Record<string, { numericValue: string; checked?: boolean }>;
 type ChartRange = "since_start" | "year" | "half_year" | "three_months";
@@ -409,6 +410,18 @@ export function DashboardClient({ data }: { data: DashboardData }) {
       const savedDateLabel = format(new Date(savedDate), "yyyy-MM-dd");
       setFeedback(`Sparat på ${savedDateLabel}.`);
     }, "Registreringen har sparats.");
+  }
+
+  async function clearNumericEntry(habit: Habit, key: string, hasSavedNumericValueToday: boolean) {
+    if (!hasSavedNumericValueToday) {
+      // Only clear local draft when nothing has been persisted for today.
+      setEntryState((prev) => ({
+        ...prev,
+        [key]: { ...(prev[key] ?? { numericValue: "", checked: undefined }), numericValue: "" },
+      }));
+      return;
+    }
+    await saveEntry(habit, format(new Date(), "yyyy-MM-dd"), false);
   }
 
   async function deleteHabit(habitId: string, title: string) {
@@ -860,8 +873,8 @@ export function DashboardClient({ data }: { data: DashboardData }) {
               const isDone = doneToday.has(habit.id);
               const selectedBoolean = state.checked ?? reportedToday.get(habit.id);
               const hasNumericDraft = state.numericValue.trim().length > 0;
-              const hasSavedChoiceToday = selectedBoolean !== undefined;
               const weekRow = weekRowByHabit.get(habit.id);
+              const hasSavedNumericValueToday = weekRow?.cells[dayIndex]?.value != null;
               const nextScheduledCompletion = weekRow?.cells
                 .slice(dayIndex + 1)
                 .map((cell, idx) => ({ cell, idx: idx + dayIndex + 1 }))
@@ -905,7 +918,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                       ) : null}
                       {preLoggedFuture && nextScheduledCompletion ? (
                         <p className="text-xs text-emerald-300">
-                          Värdet uppdaterades idag och rapporteras på {weekRow?.cells[nextScheduledCompletion.idx]?.date}.
+                          Värdet uppdaterades idag och rapporteras på {weekdayNamesFull[(nextScheduledCompletion.idx + 1) % 7]}.
                         </p>
                       ) : null}
                     </div>
@@ -981,11 +994,11 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                   {habit.trackingType === "NUMERIC" ? (
                     <div className="space-y-2">
                       <Input placeholder={habit.metricLabel ?? "Värde"} value={state.numericValue} onChange={(e) => setEntryState((p) => ({ ...p, [key]: { ...state, numericValue: e.target.value } }))} />
-                      {hasNumericDraft || hasSavedChoiceToday ? (
+                      {hasNumericDraft || hasSavedNumericValueToday ? (
                         <Button
                           variant="outline"
                           disabled={isSubmitting}
-                          onClick={() => saveEntry(habit, format(new Date(), "yyyy-MM-dd"), false)}
+                          onClick={() => clearNumericEntry(habit, key, Boolean(hasSavedNumericValueToday))}
                         >
                           Ta bort inmatning
                         </Button>
