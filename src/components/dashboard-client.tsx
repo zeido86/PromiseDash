@@ -538,7 +538,9 @@ export function DashboardClient({ data }: { data: DashboardData }) {
   }
 
   return (
-    <div className="grid gap-6">
+    <div
+      className="grid gap-6 [&_[data-slot=card]]:border [&_[data-slot=card]]:border-[#2da2ff33] [&_[data-slot=card]]:bg-[#0a1022]/95 [&_[data-slot=card]]:text-blue-50 [&_[data-slot=card-title]]:text-blue-50 [&_.text-muted-foreground]:text-blue-100/70 [&_[data-slot=button][data-variant=outline]]:border-[#2da2ff55] [&_[data-slot=button][data-variant=outline]]:bg-[#0f1832] [&_[data-slot=button][data-variant=outline]]:text-blue-50 [&_[data-slot=input]]:border-[#2da2ff55] [&_[data-slot=input]]:bg-[#0f1832] [&_[data-slot=input]]:text-blue-50 [&_[data-slot=input]]:placeholder:text-blue-200/40"
+    >
       <section className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader><CardTitle>Dagens löften</CardTitle></CardHeader>
