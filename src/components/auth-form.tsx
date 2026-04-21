@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const loginSchema = z.object({
-  email: z.email(),
+  identifier: z.string().min(3),
   password: z.string().min(8),
 });
 
@@ -38,7 +38,7 @@ export function AuthForm() {
 
   const loginForm = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { identifier: "", password: "" },
   });
 
   const registerForm = useForm<RegisterValues>({
@@ -53,7 +53,7 @@ export function AuthForm() {
     setIsLoading(false);
 
     if (result?.error) {
-      setError("Fel e-post eller losenord.");
+      setError("Fel användarnamn/e-post eller losenord.");
       return;
     }
     router.push("/dashboard");
@@ -76,7 +76,7 @@ export function AuthForm() {
       return;
     }
 
-    await onLogin({ email: values.email, password: values.password });
+    await onLogin({ identifier: values.email, password: values.password });
   }
 
   return (
@@ -89,8 +89,8 @@ export function AuthForm() {
       <TabsContent value="login" className="space-y-4">
         <form className="space-y-3" onSubmit={loginForm.handleSubmit(onLogin)}>
           <div className="space-y-2">
-            <Label htmlFor="login-email">E-post</Label>
-            <Input id="login-email" type="email" {...loginForm.register("email")} />
+            <Label htmlFor="login-identifier">Användarnamn eller e-post</Label>
+            <Input id="login-identifier" autoCapitalize="none" {...loginForm.register("identifier")} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="login-password">Losenord</Label>
